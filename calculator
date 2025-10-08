@@ -1,0 +1,71 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+int main() {
+    char exp[100];
+    int num[50], top = -1;
+    char op[50];
+    int optop = -1;
+
+    printf("Enter expression: ");
+    fgets(exp, sizeof(exp), stdin);
+
+    for (int i = 0; exp[i]; i++) {
+        if (exp[i] == ' ') continue;
+
+        if (isdigit(exp[i])) {
+            int val = 0;
+            while (isdigit(exp[i])) {
+                val = val * 10 + (exp[i] - '0');
+                i++;
+            }
+            i--;
+            num[++top] = val;
+        } 
+        else if (exp[i] == '+' || exp[i] == '-' || exp[i] == '*' || exp[i] == '/') {
+            while (optop >= 0 && 
+                  ((op[optop] == '*' || op[optop] == '/') ||
+                  ((exp[i] == '+' || exp[i] == '-') && (op[optop] == '+' || op[optop] == '-')))) {
+                int b = num[top--];
+                int a = num[top--];
+                char c = op[optop--];
+                if (c == '+') num[++top] = a + b;
+                else if (c == '-') num[++top] = a - b;
+                else if (c == '*') num[++top] = a * b;
+                else if (c == '/') {
+                    if (b == 0) {
+                        printf("Error: Division by zero.\n");
+                        return 0;
+                    }
+                    num[++top] = a / b;
+                }
+            }
+            op[++optop] = exp[i];
+        } 
+        else {
+            printf("Error: Invalid expression.\n");
+            return 0;
+        }
+    }
+
+    while (optop >= 0) {
+        int b = num[top--];
+        int a = num[top--];
+        char c = op[optop--];
+        if (c == '+') num[++top] = a + b;
+        else if (c == '-') num[++top] = a - b;
+        else if (c == '*') num[++top] = a * b;
+        else if (c == '/') {
+            if (b == 0) {
+                printf("Error: Division by zero.\n");
+                return 0;
+            }
+            num[++top] = a / b;
+        }
+    }
+
+    printf("%d\n", num[top]);
+    return 0;
+}
