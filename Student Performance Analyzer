@@ -1,0 +1,97 @@
+#include <stdio.h>
+
+struct Student {
+    int Roll;
+    char Name[50];
+    int Marks1, Marks2, Marks3;
+};
+
+int Total_Marks(struct Student s) {
+    return s.Marks1 + s.Marks2 + s.Marks3;
+}
+
+float Average_Marks(struct Student s) {
+    return Total_Marks(s) / 3.0;
+}
+
+char Grade(float Average) {
+    if (Average >= 85) {
+        return 'A';
+    } else if (Average >= 70) {
+        return 'B';
+    } else if (Average >= 50) {
+        return 'C';
+    } else if (Average >= 35) {
+        return 'D';
+    } else {
+        return 'F';
+    }
+}
+
+void Performance_Rating(char grade) {
+    int Stars = 0;
+    switch (grade) {
+        case 'A': Stars = 5; break;
+        case 'B': Stars = 4; break;
+        case 'C': Stars = 3; break;
+        case 'D': Stars = 2; break;
+        default: Stars = 0;
+    }
+    for (int i = 0; i < Stars; i++) {
+        printf("*");
+    }
+}
+
+void printRollNumbers(struct Student s[], int number, int index) {
+    if (index == number)
+        return;
+    printf("%d ", s[index].Roll);
+    printRollNumbers(s, number, index + 1);
+}
+
+void inputStudents(struct Student s[], int N) {
+    printf("Enter details: Roll Name Marks1 Marks2 Marks3\n");
+    for (int i = 0; i < N; i++) {
+        scanf("%d %s %d %d %d", &s[i].Roll, s[i].Name, &s[i].Marks1, &s[i].Marks2, &s[i].Marks3);
+    }
+}
+
+void displayReport(struct Student s[], int N) {
+    printf("\n--- Student Performance Report ---\n");
+    for (int i = 0; i < N; i++) {
+        int Total = Total_Marks(s[i]);
+        float Average = Average_Marks(s[i]);
+        char grade = Grade(Average);
+
+        printf("\nRoll: %d", s[i].Roll);
+        printf("\nName: %s", s[i].Name);
+        printf("\nTotal: %d", Total);
+        printf("\nAverage: %.2f", Average);
+        printf("\nGrade: %c", grade);
+
+        if (Average < 35) {
+            continue;
+        }
+
+        printf("\nPerformance: ");
+        Performance_Rating(grade);
+        printf("\n");
+    }
+}
+
+int main() {
+    int N;
+    printf("Enter number of students: ");
+    scanf("%d", &N);
+
+    struct Student s[N];
+
+    inputStudents(s, N);
+    displayReport(s, N);
+
+    printf("\nList of Roll Numbers (via recursion): ");
+    printRollNumbers(s, N, 0);
+    printf("\n");
+
+    return 0;
+}
