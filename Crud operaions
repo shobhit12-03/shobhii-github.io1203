@@ -1,10 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct User {
+struct User
+{
     int id;
     char name[50];
     int age;
+};
+
+enum MenuOption
+{
+    CREATE = 1,
+    READ,
+    UPDATE,
+    DELETE,
+    EXIT
 };
 
 void createUser();
@@ -12,74 +22,121 @@ void readUsers();
 void updateUser();
 void deleteUser();
 
-int main() {
-    int c;
-    while (1) {
-        printf("\n1.Create\n2.Read\n3.Update\n4.Delete\n5.Exit\nEnter choice: ");
-        scanf("%d", &c);
-        if (c == 1) createUser();
-        else if (c == 2) readUsers();
-        else if (c == 3) updateUser();
-        else if (c == 4) deleteUser();
-        else if (c == 5) break;
-        else printf("Invalid choice\n");
-    }
-    return 0;
-}
+int main()
+{
+    int choice;
+    while (1)
+    {
+        printf("\n1. Create\n2. Read\n3. Update\n4. Delete\n5. Exit\nEnter your choice: ");
+        scanf("%d", &choice);
 
-void createUser() {
-    struct User u;
-    FILE *f = fopen("users.txt", "a");
-    if (!f) return;
-    printf("Enter ID Name Age: ");
-    scanf("%d %s %d", &u.id, u.name, &u.age);
-    fprintf(f, "%d %s %d\n", u.id, u.name, u.age);
-    fclose(f);
-}
-
-void readUsers() {
-    struct User u;
-    FILE *f = fopen("users.txt", "r");
-    if (!f) { printf("No records\n"); return; }
-    while (fscanf(f, "%d %s %d", &u.id, u.name, &u.age) == 3)
-        printf("ID:%d Name:%s Age:%d\n", u.id, u.name, u.age);
-    fclose(f);
-}
-
-void updateUser() {
-    struct User u;
-    FILE *f = fopen("users.txt", "r"), *t = fopen("temp.txt", "w");
-    if (!f) { printf("No records\n"); return; }
-    int id, found = 0;
-    printf("Enter ID to update: ");
-    scanf("%d", &id);
-    while (fscanf(f, "%d %s %d", &u.id, u.name, &u.age) == 3) {
-        if (u.id == id) {
-            found = 1;
-            printf("Enter new Name and Age: ");
-            scanf("%s %d", u.name, &u.age);
+        switch (choice)
+        {
+        case CREATE:
+            createUser();
+            break;
+        case READ:
+            readUsers();
+            break;
+        case UPDATE:
+            updateUser();
+            break;
+        case DELETE:
+            deleteUser();
+            break;
+        case EXIT:
+            return 0;
+        default:
+            printf("Invalid choice\n");
         }
-        fprintf(t, "%d %s %d\n", u.id, u.name, u.age);
     }
-    fclose(f); fclose(t);
-    remove("users.txt");
-    rename("temp.txt", "users.txt");
-    if (found) printf("Updated\n"); else printf("ID not found\n");
 }
 
-void deleteUser() {
-    struct User u;
-    FILE *f = fopen("users.txt", "r"), *t = fopen("temp.txt", "w");
-    if (!f) { printf("No records\n"); return; }
-    int id, found = 0;
-    printf("Enter ID to delete: ");
-    scanf("%d", &id);
-    while (fscanf(f, "%d %s %d", &u.id, u.name, &u.age) == 3) {
-        if (u.id != id) fprintf(t, "%d %s %d\n", u.id, u.name, u.age);
-        else found = 1;
+void createUser()
+{
+    struct User newUser;
+    FILE *file = fopen("users.txt", "a");
+    if (!file)
+        return;
+    printf("Enter ID Name Age: ");
+    scanf("%d %s %d", &newUser.id, newUser.name, &newUser.age);
+    fprintf(file, "%d %s %d\n", newUser.id, newUser.name, newUser.age);
+    fclose(file);
+}
+
+void readUsers()
+{
+    struct User currentUser;
+    FILE *file = fopen("users.txt", "r");
+    if (!file)
+    {
+        printf("No records found\n");
+        return;
     }
-    fclose(f); fclose(t);
+    while (fscanf(file, "%d %s %d", &currentUser.id, currentUser.name, &currentUser.age) == 3)
+        printf("ID: %d  Name: %s  Age: %d\n", currentUser.id, currentUser.name, currentUser.age);
+    fclose(file);
+}
+
+void updateUser()
+{
+    struct User currentUser;
+    FILE *file = fopen("users.txt", "r");
+    FILE *tempFile = fopen("temp.txt", "w");
+    if (!file)
+    {
+        printf("No records found\n");
+        return;
+    }
+    int searchId, recordFound = 0;
+    printf("Enter ID to update: ");
+    scanf("%d", &searchId);
+    while (fscanf(file, "%d %s %d", &currentUser.id, currentUser.name, &currentUser.age) == 3)
+    {
+        if (currentUser.id == searchId)
+        {
+            recordFound = 1;
+            printf("Enter new Name and Age: ");
+            scanf("%s %d", currentUser.name, &currentUser.age);
+        }
+        fprintf(tempFile, "%d %s %d\n", currentUser.id, currentUser.name, currentUser.age);
+    }
+    fclose(file);
+    fclose(tempFile);
     remove("users.txt");
     rename("temp.txt", "users.txt");
-    if (found) printf("Deleted\n"); else printf("ID not found\n");
+    if (recordFound)
+        printf("Record updated successfully\n");
+    else
+        printf("ID not found\n");
+}
+
+void deleteUser()
+{
+    struct User currentUser;
+    FILE *file = fopen("users.txt", "r");
+    FILE *tempFile = fopen("temp.txt", "w");
+    if (!file)
+    {
+        printf("No records found\n");
+        return;
+    }
+    int deleteId, recordFound = 0;
+    printf("Enter ID to delete: ");
+    scanf("%d", &deleteId);
+    while (fscanf(file, "%d %s %d", &currentUser.id, currentUser.name, &currentUser.age) == 3)
+    {
+        if (currentUser.id != deleteId)
+            fprintf(tempFile, "%d %s %d\n", currentUser.id, currentUser.name, currentUser.age);
+        else
+            recordFound = 1;
+    }
+    fclose(file);
+    fclose(tempFile);
+    remove("users.txt");
+    rename("temp.txt", "users.txt");
+    if (recordFound)
+        printf("Record deleted successfully\n");
+    else
+        printf("ID not found\n");
 }
