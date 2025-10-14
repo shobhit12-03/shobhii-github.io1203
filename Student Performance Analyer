@@ -1,0 +1,129 @@
+#include <stdio.h>
+
+struct Student
+{
+    int Roll;
+    char Name[50];
+    int Marks1, Marks2, Marks3;
+};
+
+int Total_Marks(struct Student students)
+{
+    return students.Marks1 + students.Marks2 + students.Marks3;
+}
+
+float Average_Marks(struct Student students)
+{
+    return Total_Marks(students) / 3.0;
+}
+
+char Grade(float Average)
+{
+    if (Average >= 85)
+    {
+        return 'A';
+    }
+    else if (Average >= 70)
+    {
+        return 'B';
+    }
+    else if (Average >= 50)
+    {
+        return 'C';
+    }
+    else if (Average >= 35)
+    {
+        return 'D';
+    }
+    else
+    {
+        return 'F';
+    }
+}
+
+void Performance_Rating(char grade)
+{
+    int Stars = 0;
+    switch (grade)
+    {
+    case 'A':
+        Stars = 5;
+        break;
+    case 'B':
+        Stars = 4;
+        break;
+    case 'C':
+        Stars = 3;
+        break;
+    case 'D':
+        Stars = 2;
+        break;
+    default:
+        Stars = 0;
+    }
+    for (int i = 0; i < Stars; i++)
+    {
+        printf("*");
+    }
+}
+
+void printRollNumbers(struct Student students[], int number, int index)
+{
+    if (index == number)
+        return;
+    printf("%d ", students[index].Roll);
+    printRollNumbers(students, number, index + 1);
+}
+
+void inputStudents(struct Student students[], int N)
+{
+    printf("Enter details: Roll Name Marks1 Marks2 Marks3\n");
+    for (int i = 0; i < N; i++)
+    {
+        scanf("%d %s %d %d %d", &students[i].Roll, students[i].Name, &students[i].Marks1, &students[i].Marks2, &students[i].Marks3);
+    }
+}
+
+void displayReport(struct Student students[], int N)
+{
+    printf("\n--- Student Performance Report ---\n");
+    for (int i = 0; i < N; i++)
+    {
+        int Total = Total_Marks(students[i]);
+        float Average = Average_Marks(students[i]);
+        char grade = Grade(Average);
+
+        printf("\nRoll: %d", students[i].Roll);
+        printf("\nName: %s", students[i].Name);
+        printf("\nTotal: %d", Total);
+        printf("\nAverage: %.2f", Average);
+        printf("\nGrade: %c", grade);
+
+        if (Average < 35)
+        {
+            continue;
+        }
+
+        printf("\nPerformance: ");
+        Performance_Rating(grade);
+        printf("\n");
+    }
+}
+
+int main()
+{
+    int N;
+    printf("Enter number of students: ");
+    scanf("%d", &N);
+
+    struct Student students[N];
+
+    inputStudents(students, N);
+    displayReport(students, N);
+
+    printf("\nList of Roll Numbers (via recursion): ");
+    printRollNumbers(students, N, 0);
+    printf("\n");
+
+    return 0;
+}
