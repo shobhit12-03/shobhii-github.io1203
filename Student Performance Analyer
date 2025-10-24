@@ -1,0 +1,128 @@
+#include <stdio.h>
+
+typedef struct
+{
+    int roll;
+    char name[50];
+    int marks[3];
+} Student;
+
+int totalMarks(const Student student)
+{
+    int total = student.marks[0] + student.marks[1] + student.marks[2];
+    return total;
+}
+
+float averageMarks(const Student student)
+{
+    float average = totalMarks(student) / 3.0;
+    return average;
+}
+
+char CalculateGrade(const float average)
+{
+    char grade;
+    if (average >= 85)
+        grade = 'A';
+    else if (average >= 70)
+        grade = 'B';
+    else if (average >= 50)
+        grade = 'C';
+    else if (average >= 35)
+        grade = 'D';
+    else
+        grade = 'F';
+    return grade;
+}
+
+void performanceRating(const char grade)
+{
+    int stars;
+    switch (grade)
+    {
+    case 'A':
+        stars = 5;
+        break;
+    case 'B':
+        stars = 4;
+        break;
+    case 'C':
+        stars = 3;
+        break;
+    case 'D':
+        stars = 2;
+        break;
+    default:
+        stars = 0;
+        break;
+    }
+    for (int i = 0; i < stars; i++)
+    {
+        printf("*");
+    }
+}
+
+void printRollNumbers(const Student students[], const int totalStudents, const int index)
+{
+    if (index >= totalStudents)
+        return;
+
+    printf("%d ", students[index].roll);
+    printRollNumbers(students, totalStudents, index + 1);
+}
+
+void inputStudents(Student students[], const int totalStudents)
+{
+    printf("Enter details: Roll Name Marks1 Marks2 Marks3\n");
+    for (int i = 0; i < totalStudents; i++)
+    {
+        scanf("%d %s %d %d %d",
+              &students[i].roll,
+              students[i].name,
+              &students[i].marks[0],
+              &students[i].marks[1],
+              &students[i].marks[2]);
+    }
+}
+
+void displayReport(const Student students[], const int totalStudents)
+{
+    printf("\n--- Student Performance Report ---\n");
+    for (int i = 0; i < totalStudents; i++)
+    {
+        int total = totalMarks(students[i]);
+        float average = averageMarks(students[i]);
+        char gradeLetter = CalculateGrade(average);
+
+        printf("\nRoll: %d", students[i].roll);
+        printf("\nName: %s", students[i].name);
+        printf("\nTotal: %d", total);
+        printf("\nAverage: %.2f", average);
+        printf("\nGrade: %c", gradeLetter);
+
+        if (average >= 35)
+        {
+            printf("\nPerformance: ");
+            performanceRating(gradeLetter);
+            printf("\n");
+        }
+    }
+}
+
+int main()
+{
+    int totalStudents;
+    printf("Enter number of students: ");
+    scanf("%d", &totalStudents);
+
+    Student students[totalStudents];
+
+    inputStudents(students, totalStudents);
+    displayReport(students, totalStudents);
+
+    printf("\nList of Roll Numbers (via recursion): ");
+    printRollNumbers(students, totalStudents, 0);
+    printf("\n");
+
+    return 0;
+}
