@@ -2,186 +2,270 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NAME_SIZE 50
+
 typedef struct
 {
     int id;
-    char name[50];
+    char name[NAME_SIZE];
     float range;
     int quantity;
-}
-Product;
+} Product;
+
+typedef enum
+{
+    ADD_PRODUCT = 1,
+    VIEW_PRODUCTS,
+    UPDATE_QUANTITY,
+    SEARCH_BY_ID,
+    SEARCH_BY_NAME,
+    SEARCH_BY_PRICE,
+    DELETE_PRODUCT,
+    EXIT_PROGRAM
+} MenuOptions;
 
 Product *intializeInventory(int *productCount)
 {
-    printf("Enter intial number of Products:");
+    printf("Enter initial number of Products: ");
     scanf("%d", productCount);
+
     Product *inventory = (Product *)calloc(*productCount, sizeof(Product));
-    if (productCount == NULL)
+
+    if (inventory != NULL)
     {
-        printf("Memory allocation failed");
-        exit(1);
+        return inventory;
     }
-    return inventory;
+    else
+    {
+        printf("Memory allocation failed!\n");
+        return NULL;
+    }
 }
+
 void inputProducts(Product *inventory, const int productCount)
 {
-    for (int i = 0; i < productCount; i++)
+    if (inventory == NULL)
     {
-        printf("Enter product details%d:\n", i + 1);
-        printf("Product Id: ");
-        scanf("%d", &inventory[i].id);
+        printf("Inventory not initialized.\n");
+        return;
+    }
+
+    for (int index = 0; index < productCount; index++)
+    {
+        printf("\nEnter product details %d:\n", index + 1);
+
+        printf("Product ID: ");
+        scanf("%d", &inventory[index].id);
+
         printf("Product Name: ");
-        scanf("%s", inventory[i].name);
+        scanf("%s", inventory[index].name);
+
         printf("Product Range: ");
-        scanf("%f", &inventory[i].range);
+        scanf("%f", &inventory[index].range);
+
         printf("Product Quantity: ");
-        scanf("%d", &inventory[i].quantity);
+        scanf("%d", &inventory[index].quantity);
     }
 }
 
 void addNewProduct(Product **inventory, int *productCount)
 {
-    *inventory = (Product *)realloc(*inventory, (*productCount + 1) * sizeof(Product));
-    if (*inventory == NULL)
+    if (*inventory != NULL)
     {
-        printf("Memory reallocation failed\n");
+        *inventory = (Product *)realloc(*inventory, (*productCount + 1) * sizeof(Product));
+
+        if (*inventory == NULL)
+        {
+            printf("Memory reallocation failed!\n");
+            return;
+        }
+
+        Product *newProduct = &((*inventory)[*productCount]);
+
+        printf("\nEnter new product details:\n");
+        printf("Product ID: ");
+        scanf("%d", &newProduct->id);
+        printf("Product Name: ");
+        scanf("%s", newProduct->name);
+        printf("Product Price: ");
+        scanf("%f", &newProduct->range);
+        printf("Product Quantity: ");
+        scanf("%d", &newProduct->quantity);
+
+        (*productCount)++;
+        printf("Product added successfully!\n");
     }
-
-    Product *newProduct = &((*inventory)[*productCount]);
-   printf("\nEnter new product details:\n");
-    printf("Product ID: ");
-    scanf("%d", &newProduct->id);
-    printf("Product Name: ");
-    scanf("%s", newProduct->name);
-    printf("Product Price: ");
-    scanf("%f", &newProduct->range);
-    printf("Product Quantity: ");
-    scanf("%d", &newProduct->quantity);
-
-    
-    (*productCount)++;
-    printf("Product added succesfully!\n");
+    else
+    {
+        printf("Error: Inventory not initialized!\n");
+    }
 }
 
 void viewAllProducts(Product *inventory, const int productCount)
 {
-    if (productCount == 0)
+    if (productCount > 0)
     {
-        printf("Product unvailable:");
-        return;
+        printf("\n====== Product List ======\n");
+        for (int index = 0; index < productCount; index++)
+        {
+            printf("Product ID: %d | Name: %s | Range: %.2f | Quantity: %d\n",
+                   inventory[index].id, inventory[index].name, inventory[index].range, inventory[index].quantity);
+        }
     }
-    printf("======Product list======");
-
-    for (int i = 0; i < productCount; i++)
+    else
     {
-        printf("Product Id:%d | Name:%s | Range:%2f | quantity%d\n",
-               inventory[i].id, inventory[i].name, inventory[i].range, inventory[i].quantity);
+        printf("No products available.\n");
     }
 }
+
 void updateQuantity(Product *inventory, int productCount)
 {
-    int productId, found = 0, newQuantity;
-    printf("Enter a product id to update quantity:");
-    scanf("%d",&newQuantity);
-
-    for (int i = 0; i < productCount; i++)
+    if (inventory == NULL || productCount == 0)
     {
-        if (inventory[i].id == productId)
+        printf("No inventory data found.\n");
+        return;
+    }
+
+    int productId, newQuantity, found = 0;
+
+    printf("Enter a product ID to update quantity: ");
+    scanf("%d", &productId);
+
+    for (int index = 0; index < productCount; index++)
+    {
+        if (inventory[index].id == productId)
         {
-            printf("Quantity updated succesfully!\n");
+            printf("Enter new quantity: ");
+            scanf("%d", &newQuantity);
+            inventory[index].quantity = newQuantity;
+            printf("Quantity updated successfully!\n");
             found = 1;
             break;
         }
     }
+
     if (!found)
+    {
         printf("Product not found!\n");
+    }
 }
+
 void searchProduct(const Product *inventory, const int productCount)
 {
     int productId, found = 0;
-    printf("Enter a product id to Search:");
-    scanf("%d",&productId);
 
-    for (int i = 0; i < productCount; i++)
-    {
-        if (inventory[i].id == productId)
-        {
-            printf("Product found:%d | Name:%s | Range:%2f | quantity%d\n",
-                   inventory[i].id, inventory[i].name, inventory[i].range, inventory[i].quantity);
-            found = 1;
-            break;
-        }
-    }
-    if (!found)
-        printf("Product not found!\n");
-}
-void searchName(const Product *inventory, const int productCount)
-{
-    char keyword[50];
-    int found = 0;
-    printf("Enter a product id Name to Search:");
-    scanf("%s" ,keyword);
-
-    for (int i = 0; i < productCount; i++)
-    {
-        if (strstr(inventory[i].name , keyword))
-        {
-            printf("Product Id :%d | Name:%s | Range:%2f | quantity%d\n",
-                   inventory[i].id, inventory[i].name, inventory[i].range, inventory[i].quantity);
-            found = 1;
-            break;
-        }
-    }
-    if (!found)
-        printf("No Matching Product found!\n");
-}
-void searchPriceRange(const Product *inventory, const int productCount)
-{
-    int found = 0;
-    float minPrice, maxPrice;
-    printf("Enter minimum price");
-    scanf("%f", &minPrice);
-    printf("Enter maximum price");
-    scanf("%f", &maxPrice);
-
-    printf("Produtc in price range:\n");
-    for (int i = 0; i < productCount; i++)
-    {
-        if (inventory[i].range >= minPrice && inventory[i].range <= maxPrice)
-        {
-            printf("Product Id:%d | Name:%s | Range:%2f | quantity%d\n",
-                   inventory[i].id, inventory[i].name, inventory[i].range, inventory[i].quantity);
-            found = 1;
-            break;
-        }
-    }
-    if (!found)
-        printf("Product not found in this range ");
-}
-void deleteProduct(Product **inventory, int *productCount)
-{
-    int found = 0, productId;
-    printf(" Enter product to delete ");
+    printf("Enter a product ID to search: ");
     scanf("%d", &productId);
 
-    for (int i = 0; i < *productCount; i++)
+    for (int index = 0; index < productCount; index++)
     {
-        for (int j = i; j < *productCount - 1; i++)
+        if (inventory[index].id == productId)
         {
-            (*inventory[j] = (*inventory)[j + 1]);
-            (*productCount)--;
-            *inventory = (Product *)realloc(*inventory, (*productCount) * sizeof(Product));
-                printf("Product deleted succesfully!\n");
+            printf("Product Found: ID: %d | Name: %s | Range: %.2f | Quantity: %d\n",
+                   inventory[index].id, inventory[index].name, inventory[index].range, inventory[index].quantity);
             found = 1;
             break;
         }
     }
+
     if (!found)
+    {
         printf("Product not found!\n");
+    }
 }
+
+void searchName(const Product *inventory, const int productCount)
+{
+    char keyword[NAME_SIZE];
+    int found = 0;
+
+    printf("Enter product name keyword to search: ");
+    scanf("%s", keyword);
+
+    for (int index = 0; index < productCount; index++)
+    {
+        if (strstr(inventory[index].name, keyword))
+        {
+            printf("Product Found: ID: %d | Name: %s | Range: %.2f | Quantity: %d\n",
+                   inventory[index].id, inventory[index].name, inventory[index].range, inventory[index].quantity);
+            found = 1;
+        }
+    }
+
+    if (!found)
+    {
+        printf("No matching product found!\n");
+    }
+}
+
+void searchPriceRange(const Product *inventory, const int productCount)
+{
+    float minPrice, maxPrice;
+    int found = 0;
+
+    printf("Enter minimum price: ");
+    scanf("%f", &minPrice);
+    printf("Enter maximum price: ");
+    scanf("%f", &maxPrice);
+
+    printf("Products in price range:\n");
+    for (int index = 0; index < productCount; index++)
+    {
+        if (inventory[index].range >= minPrice && inventory[index].range <= maxPrice)
+        {
+            printf("Product ID: %d | Name: %s | Range: %.2f | Quantity: %d\n",
+                   inventory[index].id, inventory[index].name, inventory[index].range, inventory[index].quantity);
+            found = 1;
+        }
+    }
+
+    if (!found)
+    {
+        printf("No products found in this price range.\n");
+    }
+}
+
+void deleteProduct(Product **inventory, int *productCount)
+{
+    if (*inventory == NULL || *productCount == 0)
+    {
+        printf("No inventory data to delete.\n");
+        return;
+    }
+
+    int productId, found = 0;
+
+    printf("Enter product ID to delete: ");
+    scanf("%d", &productId);
+
+    for (int index = 0; index < *productCount; index++)
+    {
+        if ((*inventory)[index].id == productId)
+        {
+            for (int shift = index; shift < *productCount - 1; shift++)
+            {
+                (*inventory)[shift] = (*inventory)[shift + 1];
+            }
+
+            (*productCount)--;
+            *inventory = (Product *)realloc(*inventory, (*productCount) * sizeof(Product));
+
+            printf("Product deleted successfully!\n");
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("Product not found!\n");
+    }
+}
+
 void displayMenu(Product **inventory, int *productCount)
 {
     int choice = 0;
+
     do
     {
         printf("\n========= INVENTORY MENU =========\n");
@@ -198,41 +282,60 @@ void displayMenu(Product **inventory, int *productCount)
 
         switch (choice)
         {
-        case 1:
+        case ADD_PRODUCT:
             addNewProduct(inventory, productCount);
             break;
-        case 2:
+
+        case VIEW_PRODUCTS:
             viewAllProducts(*inventory, *productCount);
             break;
-        case 3:
+
+        case UPDATE_QUANTITY:
             updateQuantity(*inventory, *productCount);
             break;
-        case 4:
+
+        case SEARCH_BY_ID:
             searchProduct(*inventory, *productCount);
             break;
-        case 5:
+
+        case SEARCH_BY_NAME:
             searchName(*inventory, *productCount);
             break;
-        case 6:
+
+        case SEARCH_BY_PRICE:
             searchPriceRange(*inventory, *productCount);
             break;
-        case 7:
+
+        case DELETE_PRODUCT:
             deleteProduct(inventory, productCount);
             break;
-        case 8:
+
+        case EXIT_PROGRAM:
             printf("Exiting program... Memory released.\n");
             break;
-            default:
+
+        default:
             printf("Invalid choice! Try again.\n");
         }
-    } while (choice != 8);
+    } while (choice != EXIT_PROGRAM);
 }
+
 int main()
 {
-    int productCount;
+    int productCount = 0;
+
     Product *inventory = intializeInventory(&productCount);
-    inputProducts(inventory, productCount);
-    displayMenu(&inventory, &productCount);
-    free(inventory);
+
+    if (inventory != NULL)
+    {
+        inputProducts(inventory, productCount);
+        displayMenu(&inventory, &productCount);
+        free(inventory);
+    }
+    else
+    {
+        printf("Program terminated due to memory error.\n");
+    }
+
     return 0;
 }
