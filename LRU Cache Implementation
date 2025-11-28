@@ -1,0 +1,238 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define HASH_SIZE 2003
+
+typedef struct Node
+{
+    int key;
+    char data[100];
+    struct Node *prev;
+    struct Node *next;
+} Node;
+
+typedef struct HashEntry
+{
+    int key;
+    Node *node;
+    struct HashEntry *next;
+} HashEntry;
+
+typedef struct LRUCache
+{
+    int capacity;
+    int size;
+    Node *head;
+    Node *tail;
+    HashEntry *hashTable[HASH_SIZE];
+} LRUCache;
+
+int hashFunction(int key)
+{
+    return key % HASH_SIZE;
+}
+
+Node *hashSearch(HashEntry *table[], const int key)
+{
+    int index = hashFunction(key);
+    HashEntry *entry = table[index];
+
+    while (entry != NULL)
+    {
+        if (entry->key == key)
+        {
+            return entry->node;
+        }
+        entry = entry->next;
+    }
+    return NULL;
+}
+
+void hashInsert(HashEntry *table[], const int key, Node *node)
+{
+    int index = hashFunction(key);
+
+    HashEntry *newEntry = (HashEntry *)malloc(sizeof(HashEntry));
+    newEntry->key = key;
+    newEntry->node = node;
+    newEntry->next = table[index];
+    table[index] = newEntry;
+}
+
+void hashDelete(HashEntry *table[], const int key)
+{
+    int index = hashFunction(key);
+    HashEntry *entry = table[index];
+    HashEntry *prev = NULL;
+
+    while (entry != NULL)
+    {
+        if (entry->key == key)
+        {
+            if (prev == NULL)
+            {
+                table[index] = entry->next;
+            }
+            else
+            {
+                prev->next = entry->next;
+            }
+            free(entry);
+            return;
+        }
+        prev = entry;
+        entry = entry->next;
+    }
+}
+
+LRUCache *createCache(const int capacity)
+{
+    LRUCache *cache = (LRUCache *)malloc(sizeof(LRUCache));
+    cache->capacity = capacity;
+    cache->size = 0;
+    cache->head = NULL;
+    cache->tail = NULL;
+
+    for (int i = 0; i < HASH_SIZE; i++)
+    {
+        cache->hashTable[i] = NULL;
+    }
+    return cache;
+}
+
+// ----------------------------- REMOVE NODE -----------------------------
+void removeNode(LRUCache *cache, Node *node)
+{
+    if (node == NULL)
+        return;
+
+    if (node->prev != NULL)
+    {
+        node->prev->next = node->next;
+    }
+    else
+    {
+        cache->head = node->next;
+    }
+
+    if (node->next != NULL)
+    {
+        node->next->prev = node->prev;
+    }
+    else
+    {
+        cache->tail = node->prev;
+    }
+}
+
+void addNodeAtFront(LRUCache *cache, Node *node)
+{
+    node->prev = NULL;
+    node->next = cache->head;
+
+    if (cache->head != NULL)
+    {
+        cache->head->prev = node;
+    }
+    cache->head = node;
+
+    if (cache->tail == NULL)
+    {
+        cache->tail = node;
+    }
+}
+
+char *get(LRUCache *cache, const int key)
+{
+    Node *node = hashSearch(cache->hashTable, key);
+
+    if (node == NULL)
+    {
+        return NULL;
+    }
+
+    removeNode(cache, node);
+    addNodeAtFront(cache, node);
+
+    return node->data;
+}
+
+void put(LRUCache *cache, const int key, const char value[])
+{
+    Node *node = hashSearch(cache->hashTable, key);
+
+    if (node != NULL)
+    {
+        strcpy(node->data, value);
+        removeNode(cache, node);
+        addNodeAtFront(cache, node);
+        return;
+    }
+
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->key = key;
+    strcpy(newNode->data, value);
+    newNode->prev = newNode->next = NULL;
+
+    addNodeAtFront(cache, newNode);
+    hashInsert(cache->hashTable, key, newNode);
+    cache->size++;
+
+    if (cache->size > cache->capacity)
+    {
+        Node *lru = cache->tail;
+
+        hashDelete(cache->hashTable, lru->key);
+        removeNode(cache, lru);
+        free(lru);
+
+        cache->size--;
+    }
+}
+
+int main()
+{
+    LRUCache *cache = NULL;
+    char command[50];
+
+    while (1)
+    {
+        scanf("%s", command);
+
+        if (strcmp(command, "createCache") == 0)
+        {
+            int cap;
+            scanf("%d", &cap);
+            cache = createCache(cap);
+        }
+        else if (strcmp(command, "put") == 0)
+        {
+            int key;
+            char value[100];
+            scanf("%d %s", &key, value);
+            put(cache, key, value);
+        }
+        else if (strcmp(command, "get") == 0)
+        {
+            int key;
+            scanf("%d", &key);
+            char *result = get(cache, key);
+
+            if (result == NULL)
+            {
+                printf("NULL\n");
+            }
+            else
+            {
+                printf("%s\n", result);
+            }
+        }
+        else if (strcmp(command, "exit") == 0)
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
