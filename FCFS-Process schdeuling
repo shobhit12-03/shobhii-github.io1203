@@ -1,0 +1,417 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <ctype.h>
+
+#define HASHMAP_SIZE 101
+#define MAX_NAME_LEN 64
+#define MAX_INPUT_LEN 256
+
+typedef enum
+{
+    STATE_READY,
+    STATE_RUNNING,
+    STATE_WAITING,
+    STATE_TERMINATED,
+    STATE_KILLED
+} ProcessState;
+
+typedef struct PCB
+{
+    int pid;
+    char name[MAX_NAME_LEN];
+    int totalBurst;
+    int remainingBurst;
+    int ioStart;
+    int ioDurationTotal;
+    int ioRemaining;
+    int executedTime;
+    ProcessState state;
+    int arrivalTime;
+    int startTime;
+    int completionTime;
+    int waitingTime;
+    int turnaroundTime;
+    int killed;
+    int killTime;
+    struct PCB *nextHash;
+    struct PCB *nextQueue;
+} PCB;
+
+PCB *hashmap[HASHMAP_SIZE];
+
+typedef struct
+{
+    PCB *head;
+    PCB *tail;
+    int size;
+} Queue;
+
+Queue readyQueue = {NULL, NULL, 0};
+Queue waitingQueue = {NULL, NULL, 0};
+Queue terminatedQueue = {NULL, NULL, 0};
+
+typedef struct KillEvent
+{
+    int pid;
+    int time;
+    struct KillEvent *next;
+} KillEvent;
+
+KillEvent *killEvents = NULL;
+
+int hashPid(int pid)
+{
+    int idx = pid % HASHMAP_SIZE;
+    if (idx < 0)
+    {
+        idx += HASHMAP_SIZE;
+    }
+    return idx;
+}
+
+void insertHashmap(PCB *pcb)
+{
+    int idx = hashPid(pcb->pid);
+    pcb->nextHash = hashmap[idx];
+    hashmap[idx] = pcb;
+}
+
+PCB *findInHashmap(int pid)
+{
+    int idx = hashPid(pid);
+    PCB *cur = hashmap[idx];
+    while (cur)
+    {
+        if (cur->pid == pid)
+            return cur;
+        cur = cur->nextHash;
+    }
+    return NULL;
+}
+
+int removeFromQueue(Queue *q, PCB *pcb)
+{
+    if (!q->head)
+        return 0;
+    PCB *prev = NULL;
+    PCB *cur = q->head;
+    while (cur)
+    {
+        if (cur == pcb)
+        {
+            if (prev)
+            {
+                prev->nextQueue = cur->nextQueue;
+            }
+            else
+            {
+                q->head = cur->nextQueue;
+            }
+            if (q->tail == cur)
+            {
+                q->tail = prev;
+            }
+            cur->nextQueue = NULL;
+            q->size--;
+            return 1;
+        }
+        prev = cur;
+        cur = cur->nextQueue;
+    }
+    return 0;
+}
+
+void enqueue(Queue *q, PCB *pcb)
+{
+    pcb->nextQueue = NULL;
+    if (!q->head)
+    {
+        q->head = q->tail = pcb;
+    }
+    else
+    {
+        q->tail->nextQueue = pcb;
+        q->tail = pcb;
+    }
+    q->size++;
+}
+
+PCB *dequeue(Queue *q)
+{
+    if (!q->head)
+        return NULL;
+    PCB *pcb = q->head;
+    q->head = pcb->nextQueue;
+    if (!q->head)
+        q->tail = NULL;
+    pcb->nextQueue = NULL;
+    q->size--;
+    return pcb;
+}
+
+void addTerminated(PCB *pcb)
+{
+    pcb->state = STATE_TERMINATED;
+    enqueue(&terminatedQueue, pcb);
+}
+
+void addKillEvent(int pid, int time)
+{
+    KillEvent *ev = malloc(sizeof(KillEvent));
+    ev->pid = pid;
+    ev->time = time;
+    ev->next = NULL;
+    if (!killEvents || time < killEvents->time)
+    {
+        ev->next = killEvents;
+        killEvents = ev;
+        return;
+    }
+    KillEvent *cur = killEvents;
+    while (cur->next && cur->next->time <= time)
+        cur = cur->next;
+    ev->next = cur->next;
+    cur->next = ev;
+}
+
+void applyKillEventsAt(int currentTime)
+{
+    while (killEvents && killEvents->time == currentTime)
+    {
+        KillEvent *ev = killEvents;
+        int pid = ev->pid;
+        KillEvent *freePtr = ev;
+        killEvents = ev->next;
+        free(freePtr);
+
+        PCB *pcb = findInHashmap(pid);
+        if (!pcb)
+            continue;
+        if (pcb->state == STATE_TERMINATED || pcb->killed)
+            continue;
+
+        removeFromQueue(&readyQueue, pcb);
+        removeFromQueue(&waitingQueue, pcb);
+
+        pcb->killed = 1;
+        pcb->killTime = currentTime;
+        pcb->completionTime = currentTime;
+        pcb->state = STATE_KILLED;
+        addTerminated(pcb);
+    }
+}
+
+void printSummary()
+{
+    printf("\n---- SUMMARY ----\n");
+    printf("PID\tName\tCPU\tIO\tTurnaround\tWaiting\tStatus\n");
+    PCB *cur = terminatedQueue.head;
+    while (cur)
+    {
+        int ioTotal = cur->ioDurationTotal;
+        char statusStr[64] = "OK";
+        if (cur->killed)
+        {
+            snprintf(statusStr, sizeof(statusStr), "KILLED at %d", cur->killTime);
+        }
+        if (cur->completionTime >= 0)
+        {
+            cur->turnaroundTime = cur->completionTime - cur->arrivalTime;
+        }
+        if (cur->killed)
+        {
+            printf("%d\t%s\t%d\t%d\t-\t\t-\t%s\n",
+                   cur->pid, cur->name, cur->totalBurst, ioTotal, statusStr);
+        }
+        else
+        {
+            printf("%d\t%s\t%d\t%d\t%d\t\t%d\t%s\n",
+                   cur->pid, cur->name, cur->totalBurst, ioTotal,
+                   cur->turnaroundTime, cur->waitingTime, statusStr);
+        }
+        cur = cur->nextQueue;
+    }
+}
+
+void trim(char *s)
+{
+    while (isspace((unsigned char)*s))
+        memmove(s, s + 1, strlen(s));
+    for (int i = strlen(s) - 1; i >= 0 && isspace((unsigned char)s[i]); i--)
+        s[i] = '\0';
+}
+
+void readInput()
+{
+    char buffer[MAX_INPUT_LEN];
+    printf("Enter processes and KILL events. End with blank line.\n");
+
+    while (1)
+    {
+        if (!fgets(buffer, sizeof(buffer), stdin))
+            break;
+        trim(buffer);
+        if (strlen(buffer) == 0)
+            break;
+
+        char token[MAX_INPUT_LEN];
+        if (sscanf(buffer, "%s", token) != 1)
+            continue;
+
+        if (strcmp(token, "KILL") == 0)
+        {
+            int pid, time;
+            if (sscanf(buffer + 4, "%d %d", &pid, &time) == 2)
+            {
+                addKillEvent(pid, time);
+            }
+        }
+        else
+        {
+            char name[MAX_NAME_LEN];
+            int pid, burst;
+            char ioStartStr[32], ioDurStr[32];
+            int items = sscanf(buffer, "%63s %d %d %31s %31s",
+                               name, &pid, &burst, ioStartStr, ioDurStr);
+
+            if (items < 3)
+                continue;
+
+            int ioStart = -1, ioDur = 0;
+            if (items >= 4 && strcmp(ioStartStr, "-") != 0)
+                ioStart = atoi(ioStartStr);
+            if (items >= 5 && strcmp(ioDurStr, "-") != 0)
+                ioDur = atoi(ioDurStr);
+
+            PCB *pcb = malloc(sizeof(PCB));
+            pcb->pid = pid;
+            strncpy(pcb->name, name, MAX_NAME_LEN - 1);
+            pcb->name[MAX_NAME_LEN - 1] = '\0';
+            pcb->totalBurst = burst;
+            pcb->remainingBurst = burst;
+            pcb->ioStart = ioStart;
+            pcb->ioDurationTotal = ioDur;
+            pcb->ioRemaining = 0;
+            pcb->executedTime = 0;
+            pcb->state = STATE_READY;
+            pcb->arrivalTime = 0;
+            pcb->startTime = -1;
+            pcb->completionTime = -1;
+            pcb->waitingTime = 0;
+            pcb->turnaroundTime = -1;
+            pcb->killed = 0;
+            pcb->killTime = -1;
+            pcb->nextHash = NULL;
+            pcb->nextQueue = NULL;
+
+            insertHashmap(pcb);
+            enqueue(&readyQueue, pcb);
+        }
+    }
+}
+
+void simulate()
+{
+    int currentTime = 0;
+    PCB *running = NULL;
+
+    while (readyQueue.size > 0 || waitingQueue.size > 0 || running != NULL || killEvents != NULL)
+    {
+        applyKillEventsAt(currentTime);
+
+        if (running && running->killed)
+        {
+            running = NULL;
+        }
+
+        if (!running)
+        {
+            running = dequeue(&readyQueue);
+            if (running)
+            {
+                running->state = STATE_RUNNING;
+                if (running->startTime == -1)
+                    running->startTime = currentTime;
+            }
+        }
+
+        PCB *rqCur = readyQueue.head;
+        while (rqCur)
+        {
+            rqCur->waitingTime += 1;
+            rqCur = rqCur->nextQueue;
+        }
+
+        int moveToWaiting = 0;
+        if (running)
+        {
+            running->executedTime += 1;
+            running->remainingBurst -= 1;
+
+            if (running->ioStart >= 0 &&
+                running->ioDurationTotal > 0 &&
+                running->executedTime == running->ioStart &&
+                running->remainingBurst > 0)
+            {
+                moveToWaiting = 1;
+            }
+
+            if (running->remainingBurst <= 0)
+            {
+                running->completionTime = currentTime + 1;
+                addTerminated(running);
+                running = NULL;
+            }
+        }
+
+        PCB *wcur = waitingQueue.head;
+        while (wcur)
+        {
+            if (wcur->ioRemaining > 0)
+                wcur->ioRemaining -= 1;
+            wcur = wcur->nextQueue;
+        }
+
+        wcur = waitingQueue.head;
+        while (wcur)
+        {
+            PCB *next = wcur->nextQueue;
+            if (wcur->ioRemaining == 0)
+            {
+                removeFromQueue(&waitingQueue, wcur);
+                wcur->state = STATE_READY;
+                enqueue(&readyQueue, wcur);
+            }
+            wcur = next;
+        }
+
+        if (moveToWaiting && running)
+        {
+            running->ioRemaining = running->ioDurationTotal;
+            running->state = STATE_WAITING;
+            enqueue(&waitingQueue, running);
+            running = NULL;
+        }
+
+        sleep(1);
+        currentTime += 1;
+    }
+
+    printSummary();
+}
+
+int main()
+{
+    for (int i = 0; i < HASHMAP_SIZE; i++)
+        hashmap[i] = NULL;
+    readInput();
+    if (readyQueue.size == 0 && killEvents == NULL)
+    {
+        printf("No processes given.\n");
+        return 0;
+    }
+    simulate();
+    return 0;
+}
